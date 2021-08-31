@@ -124,7 +124,7 @@ pub struct Grid<T> {
     rows: usize,
 }
 
-impl<T: Clone> Grid<T> {
+impl<T> Grid<T> {
     /// Init a grid of size rows x columns with default values of the given type.
     /// For example this will generate a 2x3 grid of zeros:
     /// ```
@@ -139,20 +139,12 @@ impl<T: Clone> Grid<T> {
         if rows < 1 || cols < 1 {
             panic!("Grid size of rows and columns must be greater than zero.");
         }
-        Grid {
-            data: vec![T::default(); rows * cols],
-            cols,
-            rows,
-        }
-    }
 
-    /// Init a grid of size rows x columns with the given data element.
-    pub fn init(rows: usize, cols: usize, data: T) -> Grid<T> {
-        if rows < 1 || cols < 1 {
-            panic!("Grid size of rows and columns must be greater than zero.");
-        }
+        let mut data= Vec::with_capacity(rows * cols);
+        data.resize_with(rows * cols, Default::default);
+        
         Grid {
-            data: vec![data; rows * cols],
+            data,
             cols,
             rows,
         }
@@ -217,7 +209,7 @@ impl<T: Clone> Grid<T> {
     /// Generally not recommended, use with caution!
     ///
     /// # Safety
-    /// 
+    ///
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self, row: usize, col: usize) -> &mut T {
@@ -421,6 +413,96 @@ impl<T: Clone> Grid<T> {
         }
     }
 
+    /// Removes the last row from a grid and returns it, or None if it is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let mut grid = grid![[1,2,3][4,5,6]];
+    /// assert_eq![grid.pop_row(), Some(vec![4,5,6])];
+    /// assert_eq![grid.pop_row(), Some(vec![1,2,3])];
+    /// assert_eq![grid.pop_row(), None];
+    /// ```
+    pub fn pop_row(&mut self) -> Option<Vec<T>> {
+        if self.rows > 0 {
+            let row = self.data.split_off((self.rows - 1) * self.cols);
+            self.rows -= 1;
+            if self.rows == 0 {
+                self.cols = 0;
+            }
+            Some(row)
+        } else {
+            None
+        }
+    }
+
+    /// Removes the last column from a grid and returns it, or None if it is empty.
+    ///
+    /// Note that this operation is much slower than the `pop_row()` because the memory layout
+    /// of `Grid` is row-major and removing a column requires a lot of move operations.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let mut grid = grid![[1,2,3][4,5,6]];
+    /// assert_eq![grid.pop_col(), Some(vec![3,6])];
+    /// assert_eq![grid.pop_col(), Some(vec![2,5])];
+    /// assert_eq![grid.pop_col(), Some(vec![1,4])];
+    /// assert_eq![grid.pop_col(), None];
+    /// ```
+    pub fn pop_col(&mut self) -> Option<Vec<T>> {
+        if self.cols > 0 {
+            let mut col = Vec::with_capacity(self.rows);
+            for i in 0..self.rows {
+                let idx = i * self.cols + self.cols - 1 - i;
+                col.push(self.data.remove(idx));
+            }
+            self.cols -= 1;
+            if self.cols == 0 {
+                self.rows = 0;
+            }
+            Some(col)
+        } else {
+            None
+        }
+    }
+
+    /// Returns a reference to the internal data structure of the grid.
+    ///
+    /// Grid uses a row major layout.
+    /// All rows are placed right after each other in the vector data structure.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let grid = grid![[1,2,3][4,5,6]];
+    /// let flat = grid.flatten();
+    /// assert_eq!(flat, &vec![1,2,3,4,5,6]);
+    /// ```
+    pub fn flatten(&self) -> &Vec<T> {
+        &self.data
+    }
+
+    /// Converts self into a vector without clones or allocation.
+    pub fn into_vec(self) -> Vec<T> {
+        self.data
+    }
+}
+
+impl<T: Clone> Grid<T> {
+    /// Init a grid of size rows x columns with the given data element.
+    pub fn init(rows: usize, cols: usize, data: T) -> Grid<T> {
+        if rows < 1 || cols < 1 {
+            panic!("Grid size of rows and columns must be greater than zero.");
+        }
+        
+        Grid {
+            data: vec![data; rows * cols],
+            cols,
+            rows,
+        }
+    }
+
     /// Add a new row to the grid.
     ///
     /// # Examples
@@ -511,60 +593,6 @@ impl<T: Clone> Grid<T> {
         self.rows = input_col_len;
     }
 
-    /// Removes the last row from a grid and returns it, or None if it is empty.
-    ///
-    /// # Examples
-    /// ```
-    /// use grid::*;
-    /// let mut grid = grid![[1,2,3][4,5,6]];
-    /// assert_eq![grid.pop_row(), Some(vec![4,5,6])];
-    /// assert_eq![grid.pop_row(), Some(vec![1,2,3])];
-    /// assert_eq![grid.pop_row(), None];
-    /// ```
-    pub fn pop_row(&mut self) -> Option<Vec<T>> {
-        if self.rows > 0 {
-            let row = self.data.split_off((self.rows - 1) * self.cols);
-            self.rows -= 1;
-            if self.rows == 0 {
-                self.cols = 0;
-            }
-            Some(row)
-        } else {
-            None
-        }
-    }
-
-    /// Removes the last column from a grid and returns it, or None if it is empty.
-    ///
-    /// Note that this operation is much slower than the `pop_row()` because the memory layout
-    /// of `Grid` is row-major and removing a column requires a lot of move operations.
-    ///
-    /// # Examples
-    /// ```
-    /// use grid::*;
-    /// let mut grid = grid![[1,2,3][4,5,6]];
-    /// assert_eq![grid.pop_col(), Some(vec![3,6])];
-    /// assert_eq![grid.pop_col(), Some(vec![2,5])];
-    /// assert_eq![grid.pop_col(), Some(vec![1,4])];
-    /// assert_eq![grid.pop_col(), None];
-    /// ```
-    pub fn pop_col(&mut self) -> Option<Vec<T>> {
-        if self.cols > 0 {
-            let mut col = Vec::with_capacity(self.rows);
-            for i in 0..self.rows {
-                let idx = i * self.cols + self.cols - 1 - i;
-                col.push(self.data.remove(idx));
-            }
-            self.cols -= 1;
-            if self.cols == 0 {
-                self.rows = 0;
-            }
-            Some(col)
-        } else {
-            None
-        }
-    }
-
     /// Insert a new row at the index and shifts all rows after down.
     ///
     /// # Examples
@@ -579,10 +607,17 @@ impl<T: Clone> Grid<T> {
     /// ```
     pub fn insert_row(&mut self, index: usize, row: Vec<T>) {
         if row.len() != self.cols {
-            panic!("Inserted row must be of length {}, but was {}.", self.cols, row.len());
+            panic!(
+                "Inserted row must be of length {}, but was {}.",
+                self.cols,
+                row.len()
+            );
         }
         if index > self.rows {
-            panic!("Out of range. Index was {}, but must be less or equal to {}.", index, self.cols);
+            panic!(
+                "Out of range. Index was {}, but must be less or equal to {}.",
+                index, self.cols
+            );
         }
         self.rows += 1;
         let data_idx = index * self.cols;
@@ -590,9 +625,9 @@ impl<T: Clone> Grid<T> {
     }
 
     /// Insert a new column at the index.
-    /// 
+    ///
     /// Important! Insertion of columns is a lot slower than the lines insertion.
-    /// This is because of the memory layout of the grid data structure. 
+    /// This is because of the memory layout of the grid data structure.
     ///
     /// # Examples
     /// ```
@@ -605,10 +640,17 @@ impl<T: Clone> Grid<T> {
     /// ```
     pub fn insert_col(&mut self, index: usize, col: Vec<T>) {
         if col.len() != self.rows {
-            panic!("Inserted col must be of length {}, but was {}.", self.rows, col.len());
+            panic!(
+                "Inserted col must be of length {}, but was {}.",
+                self.rows,
+                col.len()
+            );
         }
         if index > self.cols {
-            panic!("Out of range. Index was {}, but must be less or equal to {}.", index, self.rows);
+            panic!(
+                "Out of range. Index was {}, but must be less or equal to {}.",
+                index, self.rows
+            );
         }
         for (row_iter, col_val) in col.iter().enumerate() {
             let data_idx = row_iter * self.cols + index + row_iter;
@@ -616,26 +658,71 @@ impl<T: Clone> Grid<T> {
         }
         self.cols += 1;
     }
-    
-    /// Returns a reference to the internal data structure of the grid.
-    ///
-    /// Grid uses a row major layout.
-    /// All rows are placed right after each other in the vector data structure.
+
+    /// Replace an existing row at the index.
     ///
     /// # Examples
     /// ```
     /// use grid::*;
-    /// let grid = grid![[1,2,3][4,5,6]];
-    /// let flat = grid.flatten();
-    /// assert_eq!(flat, &vec![1,2,3,4,5,6]);
+    /// let mut grid = grid![[1,2,3][4,5,6]];
+    /// grid.replace_row(0, vec![7,8,9]);
+    /// assert_eq!(grid[0], [7,8,9]);
+    /// assert_eq!(grid[1], [4,5,6]);
+    /// assert_eq!(grid.size(), (2,3))
     /// ```
-    pub fn flatten(&self) -> &Vec<T> {
-        &self.data
+    pub fn replace_row(&mut self, index: usize, row: Vec<T>) {
+        if row.len() != self.cols {
+            panic!(
+                "Inserted row must be of length {}, but was {}.",
+                self.cols,
+                row.len()
+            );
+        }
+        if index > self.rows {
+            panic!(
+                "Out of range. Index was {}, but must be less or equal to {}.",
+                index, self.cols
+            );
+        }
+        let data_idx = index * self.cols;
+        self.data
+            .splice(data_idx..data_idx + self.cols, row.iter().cloned());
     }
 
-    /// Converts self into a vector without clones or allocation.
-    pub fn into_vec(self) -> Vec<T> {
+    /// Replace a new column at the index.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let mut grid = grid![[1,2,3][4,5,6]];
+    /// grid.replace_col(1, vec![9,9]);
+    /// assert_eq!(grid[0], [1,9,3]);
+    /// assert_eq!(grid[1], [4,9,6]);
+    /// assert_eq!(grid.size(), (2,3))
+    /// ```
+    pub fn replace_col(&mut self, index: usize, col: Vec<T>) {
+        if col.len() != self.rows {
+            panic!(
+                "Inserted col must be of length {}, but was {}.",
+                self.rows,
+                col.len()
+            );
+        }
+        if index > self.cols {
+            panic!(
+                "Out of range. Index was {}, but must be less or equal to {}.",
+                index, self.rows
+            );
+        }
+
+        // todo: use a `for` loop here to match the style of the rest of the code.
+
         self.data
+            .iter_mut()
+            .skip(index)
+            .step_by(self.cols)
+            .zip(col)
+            .for_each(|(old, new)| *old = new.clone());
     }
 
     /// Transpose the grid so that columns become rows in new grid.
