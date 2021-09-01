@@ -124,9 +124,12 @@ pub fn index_at(cols: usize, x: usize, y: usize) -> usize {
 ///
 /// The grid data is stored in a row-major memory layout.
 pub struct Grid<T> {
-    data: Vec<T>,
-    cols: usize,
-    rows: usize,
+    #[doc(hidden)]
+    pub data: Vec<T>,
+    #[doc(hidden)]
+    pub cols: usize,
+    #[doc(hidden)]
+    pub rows: usize,
 }
 
 impl<T> Grid<T> {
