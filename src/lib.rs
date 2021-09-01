@@ -118,8 +118,8 @@ macro_rules! grid {
 }
 
 #[doc(hidden)]
-pub fn index_at(cols: usize, x: usize, y: usize) -> usize {
-    cols * y + x
+pub fn index_at(cols: usize, row: usize, col: usize) -> usize {
+    cols * row + col
 }
 
 /// Stores elements of a certain type in a 2D grid structure.
@@ -620,7 +620,7 @@ impl<T> Grid<T> {
 
         let cols = self.cols + 1;
 
-        let indices = (0..self.rows).map(|y| index_at(cols, index, y));
+        let indices = (0..self.rows).map(|row_index| index_at(cols, row_index, index));
 
         for (elem, idx) in col.into_iter().zip(indices) {
             self.data.insert(idx, elem)
@@ -748,20 +748,38 @@ impl<T> Grid<T> {
         }
     }
 
+    /// Swap the values of two elements in the grid.
+    ///
+    /// # Arguments
+    ///
+    /// * a - The index of the first element
+    /// * b - The index of the second element
+    ///
+    /// # Panics
+    ///
+    /// Panics if `a` or `b` are out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use grid::*;
+    /// let mut grid: Grid<u8> = grid![[1, 2, 3][4, 5, 6]];
+    /// grid.swap((0, 2), (1, 1));
+    /// assert_eq![format!["{:?}", grid], "[[1, 2, 5][4, 3, 6]]"]
+    /// ```
     pub fn swap(&mut self, a: (usize, usize), b: (usize, usize)) {
         let a = index_at(self.cols, a.0, a.1);
         let b = index_at(self.cols, b.0, b.1);
         self.data.swap(a, b);
     }
 
-    /// Transpose the grid so that columns become rows in new grid.
+    /// Transpose the grid so that columns become rows in a new grid.
     ///
     /// ```
     /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![[1,2,3][4,5,6]];
     /// assert_eq!(format!("{:?}", grid.transpose()), "[[1, 4][2, 5][3, 6]]");
     /// ```
-    /// Transpose the grid so that columns become rows in new grid.
     pub fn transpose(&self) -> Grid<T>
     where
         T: Clone,
