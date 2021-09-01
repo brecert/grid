@@ -112,6 +112,11 @@ macro_rules! grid {
     };
 }
 
+#[doc(hidden)]
+pub fn index_at(cols: usize, x: usize, y: usize) -> usize {
+    x + cols * y
+}
+
 /// Stores elements of a certain type in a 2D grid structure.
 ///
 /// Uses a rust `Vec<T>` type to reference the grid data on the heap.
@@ -498,10 +503,7 @@ impl<T> Grid<T> {
     /// # Panics
     ///
     /// Panics if the grid is not empty and `col.len() != grid.rows()`.
-    pub fn push_col(&mut self, col: Vec<T>)
-    where
-        T: Clone,
-    {
+    pub fn push_col(&mut self, col: Vec<T>) {
         let input_col_len = col.len();
         if self.cols > 0 && input_col_len != self.rows {
             panic!(
@@ -510,9 +512,9 @@ impl<T> Grid<T> {
             )
         }
         self.data.reserve(col.len());
-        for (idx, d) in col.iter().enumerate() {
+        for (idx, d) in col.into_iter().enumerate() {
             let vec_idx = (idx + 1) * self.cols + idx;
-            self.data.insert(vec_idx, d.to_owned());
+            self.data.insert(vec_idx, d);
         }
         self.cols += 1;
         self.rows = input_col_len;
@@ -563,10 +565,7 @@ impl<T> Grid<T> {
     /// assert_eq!(grid[1], [4,9,5,6]);
     /// assert_eq!(grid.size(), (2,4))
     /// ```
-    pub fn insert_col(&mut self, index: usize, col: Vec<T>)
-    where
-        T: Clone,
-    {
+    pub fn insert_col(&mut self, index: usize, col: Vec<T>) {
         if col.len() != self.rows {
             panic!(
                 "Inserted col must be of length {}, but was {}.",
@@ -580,10 +579,17 @@ impl<T> Grid<T> {
                 index, self.rows
             );
         }
-        for (row_iter, col_val) in col.iter().enumerate() {
-            let data_idx = row_iter * self.cols + index + row_iter;
-            self.data.insert(data_idx, col_val.clone());
+
+        self.data.reserve(self.rows);
+
+        let rows = self.rows + 1;
+
+        let indices = (0..self.rows).rev().map(|y| index_at(rows, index, y));
+
+        for (elem, idx) in col.into_iter().zip(indices) {
+            self.data.insert(idx, elem)
         }
+
         self.cols += 1;
     }
 
@@ -707,8 +713,8 @@ impl<T> Grid<T> {
     }
 
     pub fn swap(&mut self, a: (usize, usize), b: (usize, usize)) {
-        let a = self.index_at(a.0, a.1);
-        let b = self.index_at(b.0, b.1);
+        let a = index_at(self.cols, a.0, a.1);
+        let b = index_at(self.cols, b.0, b.1);
         self.data.swap(a, b);
     }
 
@@ -756,11 +762,6 @@ impl<T> Grid<T> {
     /// Converts self into a vector without clones or allocation.
     pub fn into_vec(self) -> Vec<T> {
         self.data
-    }
-
-    #[doc(hidden)]
-    pub(crate) fn index_at(&self, x: usize, y: usize) -> usize {
-        x + self.cols * y
     }
 }
 
