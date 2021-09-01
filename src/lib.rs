@@ -134,15 +134,15 @@ pub fn index_at(cols: usize, x: usize, y: usize) -> usize {
 /// use grid::Grid;
 ///
 /// let mut grid: Grid<u8> = Grid::new(2, 3);
-/// 
+///
 /// grid.insert_row(1, vec![1, 2, 3]);
 ///
 /// assert_eq!(grid.pop_col(), Some(vec![0, 3, 0]));
 /// assert_eq!(format!("{:?}", grid), "[[0, 0][1, 2][0, 0]]")
 /// ```
-/// 
+///
 /// The [`grid!`] macro is provided to make initialization more convenient:
-/// 
+///
 /// ```
 /// use grid::grid;
 ///
