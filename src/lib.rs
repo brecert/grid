@@ -20,12 +20,17 @@ Most of the functions `std::Vec<T>` offer are also implemented in `grid` and sli
 # Examples
 ```
 use grid::*;
-let mut grid = grid![[1,2,3]
-                     [4,5,6]];
+
+let mut grid = grid![
+    [1,2,3]
+    [4,5,6]
+];
+
 assert_eq!(grid, Grid::from_vec(vec![1,2,3,4,5,6],3));
 assert_eq!(grid.get(0,2), Some(&3));
 assert_eq!(grid[1][1], 5);
 assert_eq!(grid.size(), (2,3));
+
 grid.push_row(vec![7,8,9]);
 assert_eq!(grid, grid![[1,2,3][4,5,6][7,8,9]])
  ```
@@ -75,7 +80,7 @@ macro_rules! count {
 /// Not that each row must be of the same length. The following example will not compile:  
 ///  
 /// ``` ignore
-/// use grid::grid;
+/// # use grid::grid;
 /// let grid = grid![[1, 2, 3]
 /// [4, 5] // This does not work!
 /// [7, 8, 9]];
@@ -114,15 +119,37 @@ macro_rules! grid {
 
 #[doc(hidden)]
 pub fn index_at(cols: usize, x: usize, y: usize) -> usize {
-    x + cols * y
+    cols * y + x
 }
 
 /// Stores elements of a certain type in a 2D grid structure.
 ///
-/// Uses a rust `Vec<T>` type to reference the grid data on the heap.
+/// Uses a rust [`Vec<T>`] type to reference the grid data on the heap.
 /// Also the number of rows and columns are stored in the grid data structure.
 ///
 /// The grid data is stored in a row-major memory layout.
+///
+/// # Examples
+/// ```
+/// use grid::Grid;
+///
+/// let mut grid: Grid<u8> = Grid::new(2, 3);
+/// 
+/// grid.insert_row(1, vec![1, 2, 3]);
+///
+/// assert_eq!(grid.pop_col(), Some(vec![0, 3, 0]));
+/// assert_eq!(format!("{:?}", grid), "[[0, 0][1, 2][0, 0]]")
+/// ```
+/// 
+/// The [`grid!`] macro is provided to make initialization more convenient:
+/// 
+/// ```
+/// use grid::grid;
+///
+/// let mut grid = grid![[1, 2, 3][4, 5, 6]];
+/// grid.push_row(vec![7, 8, 9]);
+/// assert_eq!(format!("{:?}", grid), "[[1, 2, 3][4, 5, 6][7, 8, 9]]")
+/// ```
 pub struct Grid<T> {
     #[doc(hidden)]
     pub data: Vec<T>,
@@ -136,8 +163,8 @@ impl<T> Grid<T> {
     /// Init a grid of size rows x columns with default values of the given type.
     /// For example this will generate a 2x3 grid of zeros:
     /// ```
-    /// use grid::Grid;
-    /// let grid : Grid<u8> = Grid::new(2,2);
+    /// # use grid::Grid;
+    /// let grid: Grid<u8> = Grid::new(2,2);
     /// assert_eq!(grid[0][0], 0);
     /// ```
     pub fn new(rows: usize, cols: usize) -> Grid<T>
@@ -155,6 +182,12 @@ impl<T> Grid<T> {
     }
 
     /// Init a grid of size rows x columns with the given data element.
+    /// For example this will generate a 2x3 grid of `'a'`:
+    /// ```
+    /// # use grid::Grid;
+    /// let grid = Grid::init(2, 3, 'a');
+    /// assert_eq!(format!("{:?}", grid), "[['a', 'a', 'a']['a', 'a', 'a']]")
+    /// ```
     pub fn init(rows: usize, cols: usize, data: T) -> Grid<T>
     where
         T: Clone,
@@ -176,7 +209,7 @@ impl<T> Grid<T> {
     /// For example:
     ///
     /// ```
-    /// use grid::Grid;
+    /// # use grid::Grid;
     /// let grid = Grid::from_vec(vec![1,2,3,4,5,6], 3);
     /// assert_eq!(grid.size(), (2, 3));
     /// ```
@@ -188,7 +221,7 @@ impl<T> Grid<T> {
     /// This example will fail, because `vec.len()` is not a multiple of `cols`:
     ///
     /// ``` should_panic
-    /// use grid::Grid;
+    /// # use grid::Grid;
     /// Grid::from_vec(vec![1,2,3,4,5], 3);
     /// ```
     pub fn from_vec(vec: Vec<T>, cols: usize) -> Grid<T> {
@@ -276,7 +309,7 @@ impl<T> Grid<T> {
     /// Returns true if the grid contains no elements.
     /// For example:
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let grid : Grid<u8> = grid![];
     /// assert!(grid.is_empty());
     /// ```
@@ -293,7 +326,7 @@ impl<T> Grid<T> {
 
     /// Returns an iterator over the whole grid, starting from the first row and column.
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let grid: Grid<u8> = grid![[1,2][3,4]];
     /// let mut iter = grid.iter();
     /// assert_eq!(iter.next(), Some(&1));
@@ -308,7 +341,7 @@ impl<T> Grid<T> {
 
     /// Returns an mutable iterator over the whole grid that allows modifying each value.
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![[1,2][3,4]];
     /// let mut iter = grid.iter_mut();
     /// let next = iter.next();
@@ -324,7 +357,7 @@ impl<T> Grid<T> {
     /// # Examples
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let grid: Grid<u8> = grid![[1, 2, 3][3, 4, 5]];
     /// let mut col_iter = grid.iter_col(1);
     /// assert_eq!(col_iter.next(), Some(&2));
@@ -351,7 +384,7 @@ impl<T> Grid<T> {
     /// # Examples
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![[1, 2, 3][3, 4, 5]];
     /// let mut col_iter = grid.iter_col_mut(1);
     /// let next = col_iter.next();
@@ -380,7 +413,7 @@ impl<T> Grid<T> {
     /// # Examples
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let grid: Grid<u8> = grid![[1, 2, 3][3, 4, 5]];
     /// let mut col_iter = grid.iter_row(1);
     /// assert_eq!(col_iter.next(), Some(&3));
@@ -409,7 +442,7 @@ impl<T> Grid<T> {
     /// # Examples
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![[1, 2, 3][3, 4, 5]];
     /// let mut col_iter = grid.iter_row_mut(1);
     /// let next = col_iter.next();
@@ -438,7 +471,7 @@ impl<T> Grid<T> {
     /// # Examples
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![[1, 2, 3][3, 4, 5]];
     /// let row = vec![6,7,8];
     /// grid.push_row(row);
@@ -484,7 +517,7 @@ impl<T> Grid<T> {
     /// # Examples
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![[1, 2, 3][3, 4, 5]];
     /// let col = vec![4,6];
     /// grid.push_col(col);
@@ -496,7 +529,7 @@ impl<T> Grid<T> {
     /// Can also be used to init an empty grid:
     ///
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid: Grid<u8> = grid![];
     /// let col = vec![1,2,3];
     /// grid.push_col(col);
@@ -527,7 +560,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid = grid![[1,2,3][4,5,6]];
     /// grid.insert_row(1, vec![7,8,9]);
     /// assert_eq!(grid[0], [1,2,3]);
@@ -561,7 +594,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid = grid![[1,2,3][4,5,6]];
     /// grid.insert_col(1, vec![9,9]);
     /// assert_eq!(grid[0], [1,9,2,3]);
@@ -585,9 +618,9 @@ impl<T> Grid<T> {
 
         self.data.reserve(self.rows);
 
-        let rows = self.rows + 1;
+        let cols = self.cols + 1;
 
-        let indices = (0..self.rows).rev().map(|y| index_at(rows, index, y));
+        let indices = (0..self.rows).map(|y| index_at(cols, index, y));
 
         for (elem, idx) in col.into_iter().zip(indices) {
             self.data.insert(idx, elem)
@@ -600,7 +633,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid = grid![[1,2,3][4,5,6]];
     /// grid.replace_row(0, vec![7,8,9]);
     /// assert_eq!(grid[0], [7,8,9]);
@@ -629,7 +662,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid = grid![[1,2,3][4,5,6]];
     /// grid.replace_col(1, vec![9,9]);
     /// assert_eq!(grid[0], [1,9,3]);
@@ -665,7 +698,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid = grid![[1,2,3][4,5,6]];
     /// assert_eq![grid.pop_row(), Some(vec![4,5,6])];
     /// assert_eq![grid.pop_row(), Some(vec![1,2,3])];
@@ -691,7 +724,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let mut grid = grid![[1,2,3][4,5,6]];
     /// assert_eq![grid.pop_col(), Some(vec![3,6])];
     /// assert_eq![grid.pop_col(), Some(vec![2,5])];
@@ -753,7 +786,7 @@ impl<T> Grid<T> {
     ///
     /// # Examples
     /// ```
-    /// use grid::*;
+    /// # use grid::*;
     /// let grid = grid![[1,2,3][4,5,6]];
     /// let flat = grid.flatten();
     /// assert_eq!(flat, &vec![1,2,3,4,5,6]);
