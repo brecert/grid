@@ -140,11 +140,23 @@ impl<T> Grid<T> {
             panic!("Grid size of rows and columns must be greater than zero.");
         }
 
-        let mut data= Vec::with_capacity(rows * cols);
+        let mut data = Vec::with_capacity(rows * cols);
         data.resize_with(rows * cols, Default::default);
-        
+
+        Grid { data, cols, rows }
+    }
+
+    /// Init a grid of size rows x columns with the given data element.
+    pub fn init(rows: usize, cols: usize, data: T) -> Grid<T>
+    where
+        T: Clone,
+    {
+        if rows < 1 || cols < 1 {
+            panic!("Grid size of rows and columns must be greater than zero.");
+        }
+
         Grid {
-            data,
+            data: vec![data; rows * cols],
             cols,
             rows,
         }
@@ -413,96 +425,6 @@ impl<T> Grid<T> {
         }
     }
 
-    /// Removes the last row from a grid and returns it, or None if it is empty.
-    ///
-    /// # Examples
-    /// ```
-    /// use grid::*;
-    /// let mut grid = grid![[1,2,3][4,5,6]];
-    /// assert_eq![grid.pop_row(), Some(vec![4,5,6])];
-    /// assert_eq![grid.pop_row(), Some(vec![1,2,3])];
-    /// assert_eq![grid.pop_row(), None];
-    /// ```
-    pub fn pop_row(&mut self) -> Option<Vec<T>> {
-        if self.rows > 0 {
-            let row = self.data.split_off((self.rows - 1) * self.cols);
-            self.rows -= 1;
-            if self.rows == 0 {
-                self.cols = 0;
-            }
-            Some(row)
-        } else {
-            None
-        }
-    }
-
-    /// Removes the last column from a grid and returns it, or None if it is empty.
-    ///
-    /// Note that this operation is much slower than the `pop_row()` because the memory layout
-    /// of `Grid` is row-major and removing a column requires a lot of move operations.
-    ///
-    /// # Examples
-    /// ```
-    /// use grid::*;
-    /// let mut grid = grid![[1,2,3][4,5,6]];
-    /// assert_eq![grid.pop_col(), Some(vec![3,6])];
-    /// assert_eq![grid.pop_col(), Some(vec![2,5])];
-    /// assert_eq![grid.pop_col(), Some(vec![1,4])];
-    /// assert_eq![grid.pop_col(), None];
-    /// ```
-    pub fn pop_col(&mut self) -> Option<Vec<T>> {
-        if self.cols > 0 {
-            let mut col = Vec::with_capacity(self.rows);
-            for i in 0..self.rows {
-                let idx = i * self.cols + self.cols - 1 - i;
-                col.push(self.data.remove(idx));
-            }
-            self.cols -= 1;
-            if self.cols == 0 {
-                self.rows = 0;
-            }
-            Some(col)
-        } else {
-            None
-        }
-    }
-
-    /// Returns a reference to the internal data structure of the grid.
-    ///
-    /// Grid uses a row major layout.
-    /// All rows are placed right after each other in the vector data structure.
-    ///
-    /// # Examples
-    /// ```
-    /// use grid::*;
-    /// let grid = grid![[1,2,3][4,5,6]];
-    /// let flat = grid.flatten();
-    /// assert_eq!(flat, &vec![1,2,3,4,5,6]);
-    /// ```
-    pub fn flatten(&self) -> &Vec<T> {
-        &self.data
-    }
-
-    /// Converts self into a vector without clones or allocation.
-    pub fn into_vec(self) -> Vec<T> {
-        self.data
-    }
-}
-
-impl<T: Clone> Grid<T> {
-    /// Init a grid of size rows x columns with the given data element.
-    pub fn init(rows: usize, cols: usize, data: T) -> Grid<T> {
-        if rows < 1 || cols < 1 {
-            panic!("Grid size of rows and columns must be greater than zero.");
-        }
-        
-        Grid {
-            data: vec![data; rows * cols],
-            cols,
-            rows,
-        }
-    }
-
     /// Add a new row to the grid.
     ///
     /// # Examples
@@ -576,7 +498,10 @@ impl<T: Clone> Grid<T> {
     /// # Panics
     ///
     /// Panics if the grid is not empty and `col.len() != grid.rows()`.
-    pub fn push_col(&mut self, col: Vec<T>) {
+    pub fn push_col(&mut self, col: Vec<T>)
+    where
+        T: Clone,
+    {
         let input_col_len = col.len();
         if self.cols > 0 && input_col_len != self.rows {
             panic!(
@@ -621,7 +546,7 @@ impl<T: Clone> Grid<T> {
         }
         self.rows += 1;
         let data_idx = index * self.cols;
-        self.data.splice(data_idx..data_idx, row.iter().cloned());
+        self.data.splice(data_idx..data_idx, row);
     }
 
     /// Insert a new column at the index.
@@ -638,7 +563,10 @@ impl<T: Clone> Grid<T> {
     /// assert_eq!(grid[1], [4,9,5,6]);
     /// assert_eq!(grid.size(), (2,4))
     /// ```
-    pub fn insert_col(&mut self, index: usize, col: Vec<T>) {
+    pub fn insert_col(&mut self, index: usize, col: Vec<T>)
+    where
+        T: Clone,
+    {
         if col.len() != self.rows {
             panic!(
                 "Inserted col must be of length {}, but was {}.",
@@ -685,8 +613,7 @@ impl<T: Clone> Grid<T> {
             );
         }
         let data_idx = index * self.cols;
-        self.data
-            .splice(data_idx..data_idx + self.cols, row.iter().cloned());
+        self.data.splice(data_idx..data_idx + self.cols, row);
     }
 
     /// Replace a new column at the index.
@@ -722,11 +649,81 @@ impl<T: Clone> Grid<T> {
             .skip(index)
             .step_by(self.cols)
             .zip(col)
-            .for_each(|(old, new)| *old = new.clone());
+            .for_each(|(old, new)| *old = new);
+    }
+
+    /// Removes the last row from a grid and returns it, or None if it is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let mut grid = grid![[1,2,3][4,5,6]];
+    /// assert_eq![grid.pop_row(), Some(vec![4,5,6])];
+    /// assert_eq![grid.pop_row(), Some(vec![1,2,3])];
+    /// assert_eq![grid.pop_row(), None];
+    /// ```
+    pub fn pop_row(&mut self) -> Option<Vec<T>> {
+        if self.rows > 0 {
+            let row = self.data.split_off((self.rows - 1) * self.cols);
+            self.rows -= 1;
+            if self.rows == 0 {
+                self.cols = 0;
+            }
+            Some(row)
+        } else {
+            None
+        }
+    }
+
+    /// Removes the last column from a grid and returns it, or None if it is empty.
+    ///
+    /// Note that this operation is much slower than the `pop_row()` because the memory layout
+    /// of `Grid` is row-major and removing a column requires a lot of move operations.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let mut grid = grid![[1,2,3][4,5,6]];
+    /// assert_eq![grid.pop_col(), Some(vec![3,6])];
+    /// assert_eq![grid.pop_col(), Some(vec![2,5])];
+    /// assert_eq![grid.pop_col(), Some(vec![1,4])];
+    /// assert_eq![grid.pop_col(), None];
+    /// ```
+    pub fn pop_col(&mut self) -> Option<Vec<T>> {
+        if self.cols > 0 {
+            let mut col = Vec::with_capacity(self.rows);
+            for i in 0..self.rows {
+                let idx = i * self.cols + self.cols - 1 - i;
+                col.push(self.data.remove(idx));
+            }
+            self.cols -= 1;
+            if self.cols == 0 {
+                self.rows = 0;
+            }
+            Some(col)
+        } else {
+            None
+        }
+    }
+
+    pub fn swap(&mut self, a: (usize, usize), b: (usize, usize)) {
+        let a = self.index_at(a.0, a.1);
+        let b = self.index_at(b.0, b.1);
+        self.data.swap(a, b);
     }
 
     /// Transpose the grid so that columns become rows in new grid.
-    pub fn transpose(&self) -> Grid<T> {
+    ///
+    /// ```
+    /// # use grid::*;
+    /// let mut grid: Grid<u8> = grid![[1,2,3][4,5,6]];
+    /// assert_eq!(format!("{:?}", grid.transpose()), "[[1, 4][2, 5][3, 6]]");
+    /// ```
+    /// Transpose the grid so that columns become rows in new grid.
+    pub fn transpose(&self) -> Grid<T>
+    where
+        T: Clone,
+    {
         let mut data = Vec::with_capacity(self.data.len());
         for c in 0..self.cols {
             for r in 0..self.rows {
@@ -738,6 +735,32 @@ impl<T: Clone> Grid<T> {
             cols: self.rows,
             rows: self.cols,
         }
+    }
+
+    /// Returns a reference to the internal data structure of the grid.
+    ///
+    /// Grid uses a row major layout.
+    /// All rows are placed right after each other in the vector data structure.
+    ///
+    /// # Examples
+    /// ```
+    /// use grid::*;
+    /// let grid = grid![[1,2,3][4,5,6]];
+    /// let flat = grid.flatten();
+    /// assert_eq!(flat, &vec![1,2,3,4,5,6]);
+    /// ```
+    pub fn flatten(&self) -> &Vec<T> {
+        &self.data
+    }
+
+    /// Converts self into a vector without clones or allocation.
+    pub fn into_vec(self) -> Vec<T> {
+        self.data
+    }
+
+    #[doc(hidden)]
+    pub(crate) fn index_at(&self, x: usize, y: usize) -> usize {
+        x + self.cols * y
     }
 }
 
@@ -751,7 +774,7 @@ impl<T: Clone> Clone for Grid<T> {
     }
 }
 
-impl<T: Clone> Index<usize> for Grid<T> {
+impl<T> Index<usize> for Grid<T> {
     type Output = [T];
 
     fn index(&self, idx: usize) -> &Self::Output {
@@ -767,9 +790,23 @@ impl<T: Clone> Index<usize> for Grid<T> {
     }
 }
 
-impl<T: Clone> IndexMut<usize> for Grid<T> {
+impl<T> IndexMut<usize> for Grid<T> {
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.data[(idx * self.cols)..]
+    }
+}
+
+impl<T> Index<(usize, usize)> for Grid<T> {
+    type Output = T;
+
+    fn index(&self, (col, row): (usize, usize)) -> &Self::Output {
+        &self[col][row]
+    }
+}
+
+impl<T> IndexMut<(usize, usize)> for Grid<T> {
+    fn index_mut(&mut self, (col, row): (usize, usize)) -> &mut Self::Output {
+        &mut self[col][row]
     }
 }
 
@@ -797,6 +834,13 @@ impl<T: Eq> Eq for Grid<T> {}
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn index() {
+        let grid = grid![[1, 2, 3][4, 5, 6][7, 8, 9]];
+        assert_eq!(grid[1], [4, 5, 6]);
+        assert_eq!(grid[2][0], 7);
+    }
 
     #[test]
     fn insert_col_at_end() {
@@ -1240,11 +1284,5 @@ mod test {
     fn size() {
         let grid = Grid::init(1, 2, 3);
         assert_eq!(grid.size(), (1, 2));
-    }
-
-    #[test]
-    fn transpose() {
-        let grid: Grid<u8> = grid![[1,2,3][4,5,6]];
-        assert_eq!(format!("{:?}", grid.transpose()), "[[1, 4][2, 5][3, 6]]");
     }
 }
