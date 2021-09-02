@@ -150,6 +150,7 @@ pub fn index_at(cols: usize, row: usize, col: usize) -> usize {
 /// grid.push_row(vec![7, 8, 9]);
 /// assert_eq!(format!("{:?}", grid), "[[1, 2, 3][4, 5, 6][7, 8, 9]]")
 /// ```
+#[derive(Hash)]
 pub struct Grid<T> {
     #[doc(hidden)]
     pub data: Vec<T>,
@@ -350,6 +351,22 @@ impl<T> Grid<T> {
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<T> {
         self.data.iter_mut()
+    }
+
+    // TODO: name this properly, maybe have it be a trait?
+    /// Returns an mutable iterator over the whole grid with index positions.
+    /// ```
+    /// # use grid::*;
+    /// let mut grid: Grid<u8> = grid![[1,2][3,4]];
+    /// let mut iter = grid.iter_with_index();
+    /// assert_eq!(iter.next(), Some(((0, 0), &1)));
+    /// assert_eq!(iter.next(), Some(((0, 1), &2)));
+    /// assert_eq!(iter.next(), Some(((1, 0), &3)));
+    /// assert_eq!(iter.next(), Some(((1, 1), &4)));
+    /// ```
+    pub fn iter_with_index(&self) -> impl DoubleEndedIterator<Item = ((usize, usize), &T)> {
+        (0..self.rows)
+            .flat_map(move |row| (0..self.cols).map(move |col| ((row, col), &self[row][col])))
     }
 
     /// Returns an iterator over a column.
