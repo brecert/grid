@@ -773,6 +773,31 @@ impl<T> Grid<T> {
         self.data.swap(a, b);
     }
 
+    /// Get adjacent elements in the grid a specicific index.
+    ///
+    /// Adjacent results are currently in the pattern of `[top, right, bottom, left]`
+    ///
+    /// # Returns
+    ///
+    /// Returns [`None`] when the element index is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use grid::*;
+    /// let grid: Grid<u8> = grid![[1, 2, 3][4, 5, 6][7, 8, 9]];
+    /// assert_eq!(grid.adjacent(1, 1), [Some(&2), Some(&6), Some(&8), Some(&4)]);
+    /// assert_eq!(grid.adjacent(0, 0), [None, Some(&2), Some(&4), None]);
+    /// ```
+    pub fn adjacent(&self, row: usize, col: usize) -> [Option<&T>; 4] {
+        [
+            row.checked_sub(1).and_then(|row| self.get(row, col)),
+            col.checked_add(1).and_then(|col| self.get(row, col)),
+            row.checked_add(1).and_then(|row| self.get(row, col)),
+            col.checked_sub(1).and_then(|col| self.get(row, col)),
+        ]
+    }
+
     /// Transpose the grid so that columns become rows in a new grid.
     ///
     /// ```
